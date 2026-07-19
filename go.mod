@@ -7,7 +7,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/kataras/golog v0.1.15
-	github.com/kataras/iris/v12 v12.2.11
+	github.com/kataras/iris/v12 v12.2.9
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.16.6
 	go.opentelemetry.io/contrib/propagators/b3 v1.44.0
