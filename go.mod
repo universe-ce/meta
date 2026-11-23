@@ -6,6 +6,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/kataras/golog v0.1.12
 	github.com/kataras/iris/v12 v12.2.11
 	github.com/pkg/errors v0.9.1

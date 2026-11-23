@@ -7,47 +7,19 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	log "github.com/kataras/golog"
 	"github.com/kataras/iris/v12"
+	"github.com/universe-ce/meta/v3/pkg/m"
 	"net/http"
 )
 
-type JsonResult struct {
-	Code int         `json:"code"`           // 响应编码：0成功 401请登录 403无权限 500错误
-	Err  string      `json:"err,omitempty"`  // 系统错误或用户错误描述
-	Msg  string      `json:"msg"`            // 消息提示语
-	Data interface{} `json:"data,omitempty"` // 数据对象
-}
+type JsonResult = m.JsonResult
 
-type ApiError struct {
-	Status   int    `json:"status"`
-	Code     int    `json:"code"`
-	Langkey  string `json:"langkey"`
-	Message  string `json:"msg"`
-	Moreinfo string `json:"moreinfo"`
-	Err      error  `json:"err"`
-}
+type ApiError = m.ApiError
 
 func NewApiError(status int, code int, langKey string, message string, info string, err error) *ApiError {
-	return &ApiError{
-		status,
-		code,
-		langKey,
-		message,
-		info,
-		err}
+	return m.NewApiError(status, code, langKey, message, info, err)
 }
 
-func (err *ApiError) Error() string {
-	return err.Message
-}
-
-type ValidationError struct {
-	ActualTag string `json:"tag"`
-	Namespace string `json:"namespace"`
-	Kind      string `json:"kind"`
-	Type      string `json:"type"`
-	Value     string `json:"value"`
-	Param     string `json:"param"`
-}
+type ValidationError = m.ValidationError
 
 var (
 	ErrOK = NewApiError(

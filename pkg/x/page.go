@@ -2,18 +2,11 @@ package x
 
 import (
 	pagination "github.com/kataras/iris/v12/x/pagination"
+	"github.com/universe-ce/meta/v3/pkg/m"
 )
 
 // PageInfo 自定义pageInfo
-type PageInfo[T any] struct {
-	CurrentPage int   `json:"currentPage"` // the current page.
-	PageSize    int   `json:"pageSize"`    // the total amount of the entities return.
-	TotalPages  int   `json:"totalPages"`  // the total number of pages based on page, size and total count.
-	TotalItems  int64 `json:"count"`       // the total number of rows.
-	HasNextPage bool  `json:"hasNextPage"` // true if more data can be fetched, depending on the current page * page size and total pages.
-	Filter      any   `json:"filter"`      // if any filter data.
-	Items       []T   `json:"list"`
-}
+type PageInfo[T any] = m.PageInfo[T]
 
 // TransformPageInfo 转化list为page
 func TransformPageInfo[T any, V any](list *pagination.List[T], transform func(T) (V, error)) (*PageInfo[V], error) {

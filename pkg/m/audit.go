@@ -1,177 +1,40 @@
 package m
 
-import (
-	"encoding/json"
-	"fmt"
-	"regexp"
-	"strings"
-	"time"
+type OperateType int
 
-	log "github.com/kataras/golog"
-	"github.com/kataras/iris/v12"
-	"github.com/swaggo/swag"
-	"github.com/universe-ce/meta/v3/pkg/t"
-	"github.com/universe-ce/meta/v3/pkg/x"
+const (
+	CREATE OperateType = iota + 1 // 创建
+	UPDATE                        // 更新
+	QUERY                         // 查询
+	DELETE                        // 删除
+	OTHER                         // 其他
 )
 
-type SwaggerDoc struct {
-	Paths map[string]map[string]struct {
-		Summary string   `json:"summary"`
-		Tags    []string `json:"tags"`
-	} `json:"paths"`
-}
+type OperateResult int
 
-type NormalEditReq struct {
-	Id InterfaceID `json:"id"`
-}
+const (
+	SUCCESS OperateResult = iota + 1 // 成功
+	FAILURE                          // 失败
+	UNKNOWN                          // 未知
+)
 
-type InterfaceID struct {
-	Value string `json:"value"`
-}
-
-func (i *InterfaceID) UnmarshalJSON(data []byte) error {
-	var raw interface{}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-
-	// 兼容不同的id数据类型
-	switch v := raw.(type) {
-	case float64: // JSON 中的数字类型会被解析为 float64
-		i.Value = fmt.Sprintf("%d", int(v))
-	case int64, int, uint:
-		i.Value = fmt.Sprintf("%d", v)
-	case string:
-		i.Value = v
-	default:
-		return fmt.Errorf("id is neither int nor string")
-	}
-
-	return nil
-}
-
-// AuditHandler 审计操作
-// msgSender 消息发送函数
-// isExcludedPath 设置需要排除的接口
-// moduleName 审计模块名称
-func AuditHandler(msgSender func(msg *x.AuditLog), isExcludedPath func(path string) bool, moduleName string) iris.Handler {
-	return func(ctx iris.Context) {
-		if msgSender == nil || isExcludedPath == nil {
-			ctx.Next()
-			return
-		}
-		if ctx.Method() == "GET" || isExcludedPath(ctx.Path()) {
-			// 查询接口和其他指定接口不审计
-			ctx.Next()
-			return
-		}
-		uid, _ := ctx.User().GetID()
-		username, _ := ctx.User().GetUsername()
-		ctx.RecordRequestBody(true)
-		// 获取请求body
-		requestBody, _ := ctx.GetBody()
-		// 创建一个新的 ResponseRecorder 来捕获响应
-		recorder := ctx.Recorder()
-
-		// 继续处理请求
-		ctx.Next()
-
-		// 审计操作
-		objectType, objectName := getTargetObjectName(recoverSwaggerPath(ctx.Path()), strings.ToLower(ctx.Method()))
-		// todo 审计panic事件
-		go msgSender(&x.AuditLog{
-			XRequestId: ctx.GetHeader("X-Request-Id"),
-			UserId:     uid,
-			UserName:   username,
-			Module:     moduleName,
-			Action:     getTargetAction(ctx.Method()),
-			ObjectId:   getObjectId(ctx.Method(), requestBody, ctx),
-			ObjectType: objectType,
-			ObjectName: objectName,
-			Result:     getResult(recorder.StatusCode()),
-			URI:        ctx.Path(),
-			Params:     string(requestBody),
-			Ip:         x.GetClientIp(ctx),
-			Device:     x.ResolveDevice(ctx.Request()).DeviceName(),
-			Platform:   x.ResolveDevice(ctx.Request()).Platform(),
-			Browser:    x.GetBrowserName(ctx.GetHeader("User-Agent")),
-			Os:         x.GetOsName(ctx.GetHeader("User-Agent")),
-			Timestamp:  time.Now().Format(t.DatetimeFormat),
-		})
-	}
-}
-
-func getObjectId(method string, requestBody []byte, ctx iris.Context) string {
-	switch method {
-	case "PUT":
-		var req NormalEditReq
-		if err := json.Unmarshal(requestBody, &req); err != nil {
-			log.Error(err)
-			return ""
-		}
-		return req.Id.Value
-	case "DELETE":
-		id := ctx.URLParam("id")
-		return id
-	default:
-		return ""
-	}
-}
-
-func getTargetAction(method string) x.OperateType {
-	switch method {
-	case "GET":
-		return x.QUERY
-	case "POST":
-		return x.CREATE
-	case "PUT":
-		return x.UPDATE
-	case "DELETE":
-		return x.DELETE
-	default:
-		return x.OTHER
-	}
-}
-
-func getResult(code int) x.OperateResult {
-	switch code {
-	case 200:
-		return x.SUCCESS
-	default:
-		return x.FAILURE
-	}
-}
-
-func getTargetObjectName(path, method string) (string, string) {
-	doc, err := swag.ReadDoc()
-	if err != nil {
-		log.Error(err)
-		return path, method
-	}
-	// 根据路由获取对象类型和对象名称
-	var swaggerDoc SwaggerDoc
-	if err = json.Unmarshal([]byte(doc), &swaggerDoc); err != nil {
-		log.Error(err)
-		return path, method
-	}
-
-	for p, methods := range swaggerDoc.Paths {
-		if p == path {
-			for m, details := range methods {
-				if m == method {
-					var tag string
-					if len(details.Tags) > 0 {
-						tag = strings.TrimRight(details.Tags[0], "接口")
-					}
-					return tag, details.Summary
-				}
-			}
-		}
-	}
-	return path, method
-}
-
-func recoverSwaggerPath(path string) string {
-	reg := regexp.MustCompile(`/project/([0-9]+)`)
-	return reg.ReplaceAllString(path, "/project/{projectId:string}")
+type AuditLog struct {
+	XRequestId string        `json:"x_request_id"` // 请求ID
+	UserId     string        `json:"userid"`       // 用户ID
+	UserName   string        `json:"username"`     // 用户名称
+	Module     string        `json:"module"`       // 所属模块
+	Action     OperateType   `json:"action"`       // 操作类型 1 创建 2 更新 3 查询 4 删除 5 其他
+	ObjectType string        `json:"object_type"`  // 操作对象类型
+	ObjectName string        `json:"object_name"`  // 操作对象名称
+	ObjectId   string        `json:"object_id"`    // 操作对象ID
+	Result     OperateResult `json:"result"`       // 操作结果 1 成功 2 失败 3 未知
+	Details    string        `json:"details"`      // 操作详情
+	URI        string        `json:"uri"`          // 请求路径
+	Params     string        `json:"params"`       // 请求参数
+	Ip         string        `json:"ip"`           // IP地址
+	Device     string        `json:"device" `      // 登陆介质 网页端，移动端
+	Platform   string        `json:"platform" `    // 设备平台
+	Browser    string        `json:"browser" `     // 浏览器
+	Os         string        `json:"os"  `         // 操作系统
+	Timestamp  string        `json:"timestamp"`    // 操作时间
 }
