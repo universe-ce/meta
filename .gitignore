@@ -30,3 +30,27 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100/
+.fseventsd/
+.Spotlight-V100/
+.TemporaryItems/
+.Trashes/
+.VolumeIcon.icns
+
+# Runtime logs
+/logs/
+*.log
+*.log.[0-9]*
+*.log.gz
+access_log
+access_log.[0-9]*
+access_log.gz
+error_log
+error_log.[0-9]*
+error_log.gz
